@@ -28,16 +28,22 @@ DIRS_TO_TRIM="/usr/share/man
 /usr/share/info
 "
 
+case $DIST in
+    xenial) MIRROR="http://archive.ubuntu.com/ubuntu" SECMIRROR="http://security.ubuntu.com/ubuntu" SECCOMP="$DIST-security" ;;
+    *)      MIRROR="http://httpredir.debian.org/debian" SECMIRROR="http://security.debian.org" SECCOMP="$DIST/updates" ;;
+esac
+
 rootfsDir=$(mktemp -d)
 echo "Building base in $rootfsDir"
-DEBOOTSTRAP_DIR=$DEBOOTSTRAP_DIR debootstrap --variant container --foreign ${DIST} "$rootfsDir"
+DEBOOTSTRAP_DIR=$DEBOOTSTRAP_DIR debootstrap --variant container --foreign ${DIST} "$rootfsDir" ${MIRROR}
 chroot "$rootfsDir" bash debootstrap/debootstrap --second-stage
 
-echo -e "deb http://httpredir.debian.org/debian $DIST main" > "$rootfsDir/etc/apt/sources.list"
+echo -e "deb $MIRROR $DIST main" > "$rootfsDir/etc/apt/sources.list"
 if [ "$DIST" != "unstable" ]; then
-    echo "deb http://security.debian.org/ $DIST/updates main" >> "$rootfsDir/etc/apt/sources.list"
+    echo "deb $SECMIRROR $SECCOMP main" >> "$rootfsDir/etc/apt/sources.list"
 fi
 
+chroot "$rootfsDir" apt-key update
 chroot "$rootfsDir" apt-get update
 chroot "$rootfsDir" apt-get upgrade -y -o Dpkg::Options::="--force-confdef"
 
